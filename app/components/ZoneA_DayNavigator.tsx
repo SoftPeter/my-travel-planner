@@ -1,15 +1,17 @@
 "use client";
 
 import React from 'react';
-import { Card, Typography, Button, Space, Badge, Tooltip, DatePicker, theme } from 'antd';
+import { Card, Typography, Button, Space, Badge, Tooltip, DatePicker, theme, App } from 'antd';
 const { useToken } = theme;
-import { PlusOutlined, CalendarOutlined, CarOutlined, ClockCircleOutlined, DollarOutlined, UserOutlined, MedicineBoxOutlined } from '@ant-design/icons';
+import { PlusOutlined, CalendarOutlined, CarOutlined, ClockCircleOutlined, DollarOutlined, UserOutlined, MedicineBoxOutlined, SettingOutlined } from '@ant-design/icons';
 import { Day, TravelMode } from '../types';
 import { format, addDays, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import dayjs from 'dayjs';
+import { Grid } from 'antd';
 
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
 
 interface ZoneAProps {
     days: Day[];
@@ -91,8 +93,142 @@ export default function ZoneA_DayNavigator({
         return Object.keys(counts).reduce((a, b) => counts[a] >= counts[b] ? a : b) as TravelMode;
     };
 
+    const { modal, message: antdMessage } = App.useApp();
     const { token } = useToken();
     const isDarkMode = token.colorBgContainer === '#141414' || token.colorBgContainer === '#000000';
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+
+    // 롱프레서 타이머
+    const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const handleLongPress = (dayId: string, dayIndex: number) => {
+        if (days.length <= 1) {
+            antdMessage.warning('최소 한 개의 날짜는 유지해야 합니다.');
+            return;
+        }
+
+        modal.confirm({
+            title: `Day ${dayIndex + 1} 삭제`,
+            content: `Day ${dayIndex + 1}의 모든 일정이 삭제되며, 이후 일정이 하루씩 당겨집니다. 삭제하시겠습니까?`,
+            okText: '삭제',
+            okType: 'danger',
+            cancelText: '취소',
+            maskClosable: true,
+            onOk: () => onRemoveDay(dayId),
+        });
+    };
+
+    const onTouchStart = (dayId: string, index: number) => {
+        timerRef.current = setTimeout(() => {
+            handleLongPress(dayId, index);
+            timerRef.current = null;
+        }, 600);
+    };
+
+    const onTouchEnd = () => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+
+    // 모바일 뷰: 수평 스크롤 가능한 칩 형태
+    if (isMobile) {
+        return (
+            <div style={{
+                background: isDarkMode ? '#1f1f1f' : '#fff',
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                padding: '12px 16px',
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                }}>
+                    <style>{`
+                        .mobile-day-nav::-webkit-scrollbar { display: none; }
+                    `}</style>
+                    <div className="mobile-day-nav" style={{ display: 'flex', gap: '8px' }}>
+                        {days.map((day, index) => {
+                            const isSelected = day.id === currentDayId;
+                            return (
+                                <div
+                                    key={day.id}
+                                    onClick={() => onDaySelect(day.id)}
+                                    onContextMenu={(e) => { e.preventDefault(); handleLongPress(day.id, index); }}
+                                    onTouchStart={() => onTouchStart(day.id, index)}
+                                    onTouchEnd={onTouchEnd}
+                                    onTouchMove={onTouchEnd}
+                                    style={{
+                                        padding: '8px 16px',
+                                        borderRadius: '20px',
+                                        background: isSelected ? token.colorPrimary : (isDarkMode ? '#303030' : '#f0f2f5'),
+                                        color: isSelected ? '#fff' : (isDarkMode ? '#d9d9d9' : '#595959'),
+                                        fontWeight: isSelected ? 'bold' : 'normal',
+                                        whiteSpace: 'nowrap',
+                                        cursor: 'pointer',
+                                        border: `1px solid ${isSelected ? token.colorPrimary : (isDarkMode ? '#434343' : '#d9d9d9')}`,
+                                        fontSize: '14px',
+                                        transition: 'all 0.2s',
+                                        userSelect: 'none',
+                                        WebkitUserSelect: 'none',
+                                    }}
+                                >
+                                    Day {index + 1}
+                                </div>
+                            );
+                        })}
+                        <Tooltip title="날짜 추가">
+                            <Button
+                                type="dashed"
+                                shape="circle"
+                                icon={<PlusOutlined />}
+                                onClick={onAddDay}
+                                style={{ flexShrink: 0 }}
+                            />
+                        </Tooltip>
+                        <Tooltip title="길게 눌러 날짜 삭제">
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: isDarkMode ? '#8c8c8c' : '#bfbfbf',
+                                fontSize: '11px',
+                                gap: '4px',
+                                whiteSpace: 'nowrap',
+                                paddingLeft: '8px'
+                            }}>
+                                <Text type="secondary" style={{ fontSize: '10px' }}>롱프레스 삭제</Text>
+                            </div>
+                        </Tooltip>
+                        <DatePicker
+                            value={startDate ? dayjs(startDate) : null}
+                            onChange={(date) => {
+                                if (date) {
+                                    onStartDateChange(date.format('YYYY-MM-DD'));
+                                }
+                            }}
+                            picker="date"
+                            inputReadOnly
+                            suffixIcon={<SettingOutlined />}
+                            style={{
+                                width: '40px',
+                                padding: 0,
+                                border: 'none',
+                                background: 'transparent',
+                                flexShrink: 0
+                            }}
+                            allowClear={false}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="daynav-inner" style={{

@@ -13,10 +13,15 @@ import {
     StarFilled,
     HomeOutlined,
     CarOutlined,
+    CloseOutlined,
+    SaveOutlined
 } from '@ant-design/icons';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Place } from '../types';
+import { Grid, Modal, Button as AntButton, App } from 'antd';
+
+const { useBreakpoint } = Grid;
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -41,7 +46,11 @@ export default function SmartCard({
     isEditing,
     onEditStart,
 }: SmartCardProps) {
+    const { message } = App.useApp();
     const { token } = useToken();
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
         id: place.tempId
     });
@@ -79,6 +88,12 @@ export default function SmartCard({
         ? (isAccommodation ? '#d8b4fe' : token.colorPrimaryText)
         : (isAccommodation ? '#7c3aed' : token.colorText);
 
+    // 모바일 전용 편집 모달 핸들러
+    const handleMobileEditClose = () => {
+        onEditStart(); // 토글 방식이므로 다시 호출하면 null이 됨
+        message.success('수정사항이 저장되었습니다');
+    };
+
     return (
         <div ref={setNodeRef} style={style}>
             <Badge.Ribbon
@@ -88,16 +103,20 @@ export default function SmartCard({
             >
                 <Card
                     hoverable
-                    size="small"
+                    size={isMobile ? "default" : "small"}
                     style={{
                         borderRadius: '12px',
                         border: `2px solid ${borderColor}`,
                         background: cardBgColor,
                         boxShadow: isEditing ? '0 4px 12px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)',
                         transition: 'all 0.3s ease',
+                        minHeight: isMobile ? '90px' : 'auto', // 터치 영역 확보
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
                     }}
                     onClick={onEditStart}
-                    actions={isEditing ? [
+                    actions={(!isMobile && isEditing) ? [
                         <Popconfirm
                             key="delete"
                             title="장소를 삭제하시겠습니까?"
@@ -114,179 +133,281 @@ export default function SmartCard({
                         </Popconfirm>
                     ] : []}
                 >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '16px' : '12px' }}>
                         {/* 드래그 핸들 */}
                         <div
                             {...attributes}
                             {...listeners}
                             style={{
                                 cursor: 'grab',
-                                marginTop: '8px',
-                                padding: '4px',
-                                borderRadius: '4px',
+                                padding: isMobile ? '8px' : '4px',
+                                borderRadius: '6px',
                                 background: token.colorFillSecondary,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <MenuOutlined style={{ color: token.colorTextDescription, fontSize: '14px' }} />
+                            <MenuOutlined style={{ color: token.colorTextDescription, fontSize: isMobile ? '18px' : '14px' }} />
                         </div>
 
                         {/* 카드 내용 */}
                         <div style={{ flex: 1 }}>
-                            <Space orientation="vertical" size={2} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={isMobile ? 4 : 2} style={{ width: '100%' }}>
                                 {/* 제목 영역 */}
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                     <div style={{
                                         fontWeight: 'bold',
-                                        fontSize: '14px',
+                                        fontSize: isMobile ? '16px' : '14px',
                                         color: titleColor,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '4px',
+                                        gap: '6px',
                                         flexWrap: 'wrap',
                                     }}>
                                         {isAccommodation ? (
-                                            <HomeOutlined style={{ color: '#7c3aed', fontSize: '13px' }} />
+                                            <HomeOutlined style={{ color: '#7c3aed', fontSize: isMobile ? '15px' : '13px' }} />
                                         ) : (
-                                            <EnvironmentOutlined style={{ color: token.colorPrimary, fontSize: '13px' }} />
+                                            <EnvironmentOutlined style={{ color: token.colorPrimary, fontSize: isMobile ? '15px' : '13px' }} />
                                         )}
                                         {place.name}
+                                        {place.memo && <span style={{ marginLeft: '4px', fontSize: '14px' }} title="메모 있음">📝</span>}
                                         {isAccommodation && <Badge status="processing" color="purple" text="숙소" style={{ marginLeft: '4px' }} />}
 
-                                        {place.placeDetails?.rating && (
+                                        {!isMobile && place.placeDetails?.rating && (
                                             <span style={{ fontSize: '11px', color: '#faad14', marginLeft: '4px' }}>
                                                 <StarFilled /> {place.placeDetails.rating.toFixed(1)}
                                             </span>
                                         )}
-                                        {isClosedToday && <Badge count="휴무일" style={{ backgroundColor: '#ff4d4f', marginLeft: '4px' }} />}
-                                        {isOpen !== undefined && (
-                                            <Badge status={isOpen ? 'success' : 'error'} text={isOpen ? '영업 중' : '종료'} style={{ marginLeft: '4px' }} />
-                                        )}
                                     </div>
-                                    <Text type="secondary" ellipsis style={{ fontSize: '11px', maxWidth: '280px' }}>
+                                    <Text type="secondary" ellipsis style={{ fontSize: isMobile ? '12px' : '11px', maxWidth: isMobile ? '240px' : '280px' }}>
                                         {place.address}
                                     </Text>
                                 </div>
 
-                                {/* 하이브리드 시간/예산 입력 영역 */}
+                                {/* 시간/예산 요약 (모바일에서는 가독성 강조) */}
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '12px',
+                                    gap: isMobile ? '16px' : '12px',
                                     marginTop: '4px',
-                                    background: isEditing ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)') : 'transparent',
-                                    padding: isEditing ? '4px 8px' : '0',
-                                    borderRadius: '6px',
-                                    border: isEditing ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` : 'none'
                                 }}>
-                                    <Space size={4}>
-                                        <ClockCircleOutlined style={{ color: token.colorTextDescription, fontSize: '11px' }} />
-                                        {isEditing ? (
+                                    <Space size={4} onClick={(e) => e.stopPropagation()}>
+                                        <ClockCircleOutlined style={{ color: token.colorTextDescription, fontSize: isMobile ? '13px' : '11px' }} />
+                                        {(!isMobile && isEditing) ? (
                                             <Input
                                                 size="small"
-                                                variant="filled"
                                                 placeholder="HH:mm"
                                                 value={place.startTime}
-                                                onChange={(e) => onUpdate(place.tempId, { startTime: e.target.value })}
-                                                style={{
-                                                    width: '70px',
-                                                    fontSize: '11px',
-                                                    textAlign: 'center',
-                                                    color: isDarkMode ? '#fff' : 'inherit'
+                                                style={{ width: '80px', fontSize: '11px' }}
+                                                onChange={(e) => {
+                                                    let val = e.target.value.replace(/[^0-9]/g, '');
+                                                    if (val.length > 4) val = val.slice(0, 4);
+                                                    let formatted = val;
+                                                    if (val.length >= 3) {
+                                                        formatted = val.slice(0, 2) + ':' + val.slice(2);
+                                                    }
+                                                    onUpdate(place.tempId, { startTime: formatted });
                                                 }}
-                                                onClick={(e) => e.stopPropagation()}
                                             />
                                         ) : (
-                                            <Text style={{ fontSize: '11px' }}>{place.startTime || '시간 미설정'}</Text>
+                                            <Text style={{ fontSize: isMobile ? '13px' : '11px', fontWeight: isMobile ? 500 : 400 }}>
+                                                {place.startTime || '시간 미설정'}
+                                            </Text>
                                         )}
                                     </Space>
 
                                     <div style={{ height: '12px', width: '1px', background: token.colorBorderSecondary }} />
 
-                                    <Space size={4}>
-                                        <DollarOutlined style={{ color: token.colorTextDescription, fontSize: '11px' }} />
-                                        {isEditing ? (
+                                    <Space size={4} onClick={(e) => e.stopPropagation()}>
+                                        <DollarOutlined style={{ color: token.colorTextDescription, fontSize: isMobile ? '13px' : '11px' }} />
+                                        {(!isMobile && isEditing) ? (
                                             <InputNumber
                                                 size="small"
-                                                variant="filled"
-                                                placeholder="예산"
                                                 min={0}
                                                 value={place.budget}
+                                                style={{ width: '100px', fontSize: '11px' }}
                                                 onChange={(val) => onUpdate(place.tempId, { budget: val || 0 })}
                                                 formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                                 parser={(value) => value?.replace(/(,*)/g, '') as any}
-                                                style={{ width: '90px', fontSize: '11px' }}
-                                                onClick={(e) => e.stopPropagation()}
-                                                controls={false}
                                             />
                                         ) : (
-                                            <Text style={{ fontSize: '11px' }}>{place.budget.toLocaleString()}원</Text>
+                                            <Text style={{ fontSize: isMobile ? '13px' : '11px', fontWeight: isMobile ? 500 : 400 }}>
+                                                {place.budget > 0 ? `${place.budget.toLocaleString()}원` : '예산 미설정'}
+                                            </Text>
                                         )}
                                     </Space>
                                 </div>
 
-                                {/* 아코디언 상세 모드 (편집 시 또는 명시적 확장 시) */}
-                                <Collapse
-                                    ghost
-                                    size="small"
-                                    items={[
-                                        {
-                                            key: 'details',
-                                            label: <Text type="secondary" style={{ fontSize: '11px' }}>상세 정보 & 메모</Text>,
-                                            children: (
-                                                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                                                    {/* 체크리스트 */}
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                        {place.checklist.map(item => (
-                                                            <Checkbox
-                                                                key={item.id}
-                                                                checked={item.checked}
-                                                                onChange={() => handleChecklistToggle(item.id)}
-                                                                style={{ fontSize: '11px' }}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                {item.label}
-                                                            </Checkbox>
-                                                        ))}
-                                                    </div>
-
-                                                    {/* 메모 입력 */}
-                                                    <TextArea
-                                                        placeholder="여기에 메모를 입력하세요..."
-                                                        value={place.memo}
-                                                        onChange={(e) => onUpdate(place.tempId, { memo: e.target.value })}
-                                                        autoSize={{ minRows: 1, maxRows: 4 }}
-                                                        style={{ fontSize: '11px', borderRadius: '6px' }}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-
-                                                    {/* 부가 정보 UI */}
-                                                    {place.placeDetails && (
-                                                        <div style={{ fontSize: '10px', color: '#64748b' }}>
-                                                            {place.placeDetails.phoneNumber && <div>📞 {place.placeDetails.phoneNumber}</div>}
-                                                            <Space size={8} style={{ marginTop: '2px' }}>
-                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${place.name}&query_place_id=${place.placeId}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                                                                    📍 구글맵 보기
-                                                                </a>
-                                                                {place.placeDetails.website && (
-                                                                    <a href={place.placeDetails.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                                                                        🌐 웹사이트
-                                                                    </a>
-                                                                )}
-                                                            </Space>
+                                {/* PC 전용 아코디언 상세 모드 */}
+                                {!isMobile && (
+                                    <Collapse
+                                        ghost
+                                        size="small"
+                                        items={[
+                                            {
+                                                key: 'details',
+                                                label: <Text type="secondary" style={{ fontSize: '11px' }}>상세 정보 & 메모</Text>,
+                                                children: (
+                                                    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                                                        {/* 체크리스트 */}
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                            {place.checklist.map(item => (
+                                                                <Checkbox
+                                                                    key={item.id}
+                                                                    checked={item.checked}
+                                                                    onChange={() => handleChecklistToggle(item.id)}
+                                                                    style={{ fontSize: '11px' }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {item.label}
+                                                                </Checkbox>
+                                                            ))}
                                                         </div>
-                                                    )}
-                                                </Space>
-                                            )
-                                        }
-                                    ]}
-                                    style={{ marginTop: '4px' }}
-                                />
+
+                                                        {/* 메모 입력 */}
+                                                        <TextArea
+                                                            placeholder="여기에 메모를 입력하세요..."
+                                                            value={place.memo}
+                                                            onChange={(e) => onUpdate(place.tempId, { memo: e.target.value })}
+                                                            autoSize={{ minRows: 1, maxRows: 4 }}
+                                                            style={{ fontSize: '11px', borderRadius: '6px' }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    </Space>
+                                                )
+                                            }
+                                        ]}
+                                        style={{ marginTop: '4px' }}
+                                    />
+                                )}
                             </Space>
                         </div>
                     </div>
                 </Card>
             </Badge.Ribbon>
+
+            {/* 모바일 전용 전체 화면 편집 모달 */}
+            {isMobile && (
+                <Modal
+                    title={null}
+                    open={isEditing}
+                    onCancel={handleMobileEditClose}
+                    footer={null}
+                    closeIcon={null}
+                    className="mobile-full-modal"
+                    styles={{ body: { padding: 0 } }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: isDarkMode ? '#141414' : '#fff' }}>
+                        {/* 모달 헤더 */}
+                        <div style={{
+                            padding: '16px',
+                            borderBottom: '1px solid #f0f0f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: isDarkMode ? '#1f1f1f' : '#fff',
+                            paddingTop: 'calc(16px + env(safe-area-inset-top, 0px))'
+                        }}>
+                            <AntButton type="text" icon={<CloseOutlined />} onClick={handleMobileEditClose} />
+                            <Text strong style={{ fontSize: '16px' }}>장소 편집</Text>
+                            <AntButton type="primary" size="small" icon={<SaveOutlined />} onClick={handleMobileEditClose}>저장</AntButton>
+                        </div>
+
+                        {/* 모바일 텍스트 마스킹 / 자동 포매팅 지원 함수 */}
+                        <style>{`
+                            .time-input-masked input {
+                                letter-spacing: 1px;
+                            }
+                        `}</style>
+
+                        {/* 모달 내용 */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                            <Space orientation="vertical" size={24} style={{ width: '100%' }}>
+                                <div>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>📍 장소명</Text>
+                                    <Input value={place.name} readOnly variant="filled" />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>🕒 방문 시간</Text>
+                                        <Input
+                                            placeholder="예: 1400 → 14:00"
+                                            value={place.startTime}
+                                            inputMode="numeric"
+                                            className="time-input-masked"
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/[^0-9]/g, '');
+                                                if (val.length > 4) val = val.slice(0, 4);
+
+                                                let formatted = val;
+                                                if (val.length >= 3) {
+                                                    formatted = val.slice(0, 2) + ':' + val.slice(2);
+                                                }
+                                                onUpdate(place.tempId, { startTime: formatted });
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>💰 예산(원)</Text>
+                                        <InputNumber
+                                            style={{ width: '100%' }}
+                                            min={0}
+                                            value={place.budget}
+                                            onChange={(val) => onUpdate(place.tempId, { budget: val || 0 })}
+                                            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                            parser={(value) => value?.replace(/(,*)/g, '') as any}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>📝 메모</Text>
+                                    <TextArea
+                                        placeholder="메모를 입력하세요..."
+                                        value={place.memo}
+                                        onChange={(e) => onUpdate(place.tempId, { memo: e.target.value })}
+                                        autoSize={{ minRows: 4 }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>✅ 체크리스트</Text>
+                                    <Space orientation="vertical" style={{ width: '100%' }}>
+                                        {place.checklist.map(item => (
+                                            <div key={item.id} style={{
+                                                padding: '12px',
+                                                background: isDarkMode ? '#1f1f1f' : '#f9f9f9',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px'
+                                            }} onClick={() => handleChecklistToggle(item.id)}>
+                                                <Checkbox checked={item.checked} />
+                                                <Text>{item.label}</Text>
+                                            </div>
+                                        ))}
+                                    </Space>
+                                </div>
+
+                                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
+                                    <Popconfirm
+                                        title="이 장소를 삭제하시겠습니까?"
+                                        onConfirm={() => onRemove(place.tempId)}
+                                        okText="삭제"
+                                        cancelText="취소"
+                                        okButtonProps={{ danger: true }}
+                                    >
+                                        <AntButton danger block size="large" icon={<DeleteOutlined />}>장소 삭제</AntButton>
+                                    </Popconfirm>
+                                </div>
+                            </Space>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

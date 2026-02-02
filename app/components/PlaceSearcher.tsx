@@ -5,8 +5,10 @@ import { AutoComplete, Input, Typography, Spin } from 'antd';
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { SearchOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { Place } from '../types';
+import { Grid } from 'antd';
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 interface PlaceSearcherProps {
     onPlaceSelect: (place: Partial<Place>) => void;
@@ -24,6 +26,8 @@ export default function PlaceSearcher({ onPlaceSelect }: PlaceSearcherProps) {
     const [options, setOptions] = useState<{ value: string; label: React.ReactNode; placeId: string }[]>([]);
     const [searchValue, setSearchValue] = useState("");
     const [loading, setLoading] = useState(false);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     useEffect(() => {
         if (!map || !placesLib) return;
@@ -113,11 +117,11 @@ export default function PlaceSearcher({ onPlaceSelect }: PlaceSearcherProps) {
     return (
         <div style={{
             position: 'absolute',
-            top: '24px',
+            top: isMobile ? '12px' : '24px',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 1000, // 카드보다 위
-            width: '450px'
+            zIndex: 1000,
+            width: isMobile ? '90%' : '450px'
         }}>
             <AutoComplete
                 popupMatchSelectWidth={true}
@@ -128,12 +132,12 @@ export default function PlaceSearcher({ onPlaceSelect }: PlaceSearcherProps) {
                 value={searchValue}
             >
                 <Input.Search
-                    placeholder="🔍 가고 싶은 장소를 검색하세요"
+                    placeholder={isMobile ? "장소 검색" : "🔍 가고 싶은 장소를 검색하세요"}
                     loading={loading}
-                    size="large"
+                    size={isMobile ? "middle" : "large"}
                     style={{
                         boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                        borderRadius: '12px',
+                        borderRadius: isMobile ? '8px' : '12px',
                     }}
                 />
             </AutoComplete>

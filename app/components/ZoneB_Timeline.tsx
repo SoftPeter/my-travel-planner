@@ -4,6 +4,8 @@ import { EnvironmentOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Place, TravelSegment, TravelMode, ValidationResult } from '../types';
+import { Grid } from 'antd';
+const { useBreakpoint } = Grid;
 import SmartCard from './SmartCard';
 import DynamicGap from './DynamicGap';
 
@@ -59,30 +61,17 @@ export default function ZoneB_Timeline({
     };
 
     const { token } = useToken();
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     return (
         <div className="timeline-inner" style={{
-            padding: '24px',
+            padding: isMobile ? '12px 16px' : '24px',
             background: token.colorBgContainer, // 테마에 맞는 배경색
             borderRight: `1px solid ${token.colorBorderSecondary}`,
         }}>
-            {/* 헤더 */}
-            <div style={{
-                marginBottom: '20px',
-                padding: '16px',
-                background: token.colorFillAlter, // 테마에 맞는 옅은 배경색
-                borderRadius: '12px',
-                border: `1px solid ${token.colorBorderSecondary}`,
-            }}>
-                <Title level={5} style={{
-                    margin: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}>
-                    🗓️ 오늘의 타임라인 ({places.length}개 장소)
-                </Title>
-            </div>
+            {/* 헤더 공간 절약을 위해 제거 */}
+
 
             {/* 타임라인 */}
             {places.length > 0 ? (

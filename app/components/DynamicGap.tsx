@@ -136,7 +136,7 @@ export default function DynamicGap({
             {/* 타임라인 정합성 체크 경고 */}
             {validationError && (
                 <Alert
-                    message={validationError}
+                    title={validationError}
                     type="error"
                     icon={<WarningOutlined />}
                     showIcon

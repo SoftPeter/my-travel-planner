@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Space, Badge, Tooltip, ConfigProvider, theme, Button, App, Input, Modal, Tabs } from 'antd';
+import { Layout, Typography, Space, Badge, Tooltip, ConfigProvider, theme, Button, App, Input, Modal, Tabs, Grid } from 'antd';
 import {
   CheckCircleFilled,
   LoadingOutlined,
@@ -13,8 +13,11 @@ import {
   ArrowLeftOutlined,
   EditOutlined,
   DownloadOutlined,
-  PictureOutlined
+  PictureOutlined,
+  MenuOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
+import { Drawer } from 'antd';
 import { useRouter, useParams } from 'next/navigation';
 import { Trip, Day, Place, TravelMode } from '../../types';
 import { DEFAULT_CHECKLIST, DEFAULT_DURATION } from '../../utils/constants';
@@ -31,6 +34,7 @@ import ZoneC_MapEngine from '../../components/ZoneC_MapEngine';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 interface TravelPlannerProps {
   isDarkMode: boolean;
@@ -42,6 +46,8 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   // 전체 여행 데이터
   const [trip, setTrip] = useState<Trip>({
@@ -67,6 +73,9 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
 
   // 저장 중 상태
   const [isSaving, setIsSaving] = useState(false);
+
+  // 모바일 메뉴(햄버거) 열림 상태
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Google Directions API로 이동 정보 가져오기
   const { segments, loading: directionsLoading } = useDirections(places, travelModes);
@@ -181,11 +190,26 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
    */
   const removeDay = (dayId: string) => {
     setTrip(prev => {
+      const deletedIndex = prev.days.findIndex(d => d.id === dayId);
       const newDays = prev.days.filter(d => d.id !== dayId);
+
+      // 삭제 후 어떤 날짜를 선택할지 결정
+      let nextDayId = prev.currentDayId;
+      if (prev.currentDayId === dayId) {
+        // 현재 보고 있던 날짜를 지우는 경우
+        if (newDays.length > 0) {
+          // 같은 위치(인덱스)에 새로 올라온 날짜가 있으면 그 날짜 선택, 없으면 마지막 날짜 선택
+          const nextIndex = Math.min(deletedIndex, newDays.length - 1);
+          nextDayId = newDays[nextIndex].id;
+        } else {
+          nextDayId = '';
+        }
+      }
+
       return {
         ...prev,
         days: newDays,
-        currentDayId: newDays.length > 0 ? newDays[0].id : '',
+        currentDayId: nextDayId,
       };
     });
   };
@@ -351,7 +375,6 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
 
   return (
     <Layout style={{ minHeight: '100vh', background: isDarkMode ? '#141414' : 'white' }}>
-      {/* 헤더 */}
       <Header style={{
         backgroundImage: trip.coverImage
           ? (trip.coverImage.startsWith('http')
@@ -362,14 +385,18 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
             : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)'),
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        padding: '0 24px',
+        padding: isMobile ? '0 12px' : '0 24px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '56px',
         zIndex: 100,
-        transition: 'background-image 0.3s ease'
+        transition: 'background-image 0.3s ease',
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {/* 뒤로가기 버튼 */}
@@ -389,7 +416,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
               onPressEnter={toggleEditTitle}
               autoFocus
               style={{
-                width: '300px',
+                width: isMobile ? '150px' : '300px',
                 fontSize: '16px',
                 fontWeight: 'bold',
                 background: 'rgba(255,255,255,0.2)',
@@ -403,68 +430,134 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
               title="클릭하여 제목 수정"
             >
-              <Title level={4} style={{
+              <Title level={isMobile ? 5 : 4} style={{
                 color: 'white',
                 margin: 0,
                 fontWeight: 'bold',
+                maxWidth: isMobile ? '150px' : 'none',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}>
-                ✈️ {trip.tripName}
+                {isMobile ? trip.tripName : `✈️ ${trip.tripName}`}
               </Title>
-              <EditOutlined style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px' }} />
+              {!isMobile && <EditOutlined style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px' }} />}
             </div>
           )}
 
-          {/* 표지 변경 버튼 */}
-          <Tooltip title="여행 분위기에 맞는 표지를 설정해보세요!">
-            <Button
-              type="text"
-              icon={<PictureOutlined />}
-              onClick={() => setIsCoverModalOpen(true)}
-              style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <span style={{ fontSize: '13px' }}>꾸미기</span>
-            </Button>
-          </Tooltip>
-
-          {/* 내보내기 버튼 */}
-          <Tooltip title="여행 계획을 파일로 저장하여 공유합니다.">
-            <Button
-              type="text"
-              icon={<DownloadOutlined />}
-              onClick={() => exportTripToFile(trip)}
-              style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <span style={{ fontSize: '13px' }}>내보내기</span>
-            </Button>
-          </Tooltip>
-
-          {/* 다크 모드 토글 (명확한 텍스트 추가) */}
-          <Button
-            type="text"
-            icon={isDarkMode ? <BulbFilled style={{ color: '#ffcc00' }} /> : <BulbOutlined />}
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <span style={{ fontSize: '13px' }}>{isDarkMode ? '다크 모드' : '라이트 모드'}</span>
-          </Button>
-        </div>
-
-        {/* 자동 저장 인디케이터 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.85)', fontSize: '13px', zIndex: 2 }}>
-          {isSaving ? (
+          {/* PC 전용 부가 기능 버튼들 */}
+          {!isMobile && (
             <>
-              <LoadingOutlined /> <span>저장 중...</span>
+              {/* 표지 변경 버튼 */}
+              <Tooltip title="여행 분위기에 맞는 표지를 설정해보세요!">
+                <Button
+                  type="text"
+                  icon={<PictureOutlined />}
+                  onClick={() => setIsCoverModalOpen(true)}
+                  style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span style={{ fontSize: '13px' }}>꾸미기</span>
+                </Button>
+              </Tooltip>
+
+              {/* 내보내기 버튼 */}
+              <Tooltip title="여행 계획을 파일로 저장하여 공유합니다.">
+                <Button
+                  type="text"
+                  icon={<DownloadOutlined />}
+                  onClick={() => exportTripToFile(trip)}
+                  style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span style={{ fontSize: '13px' }}>내보내기</span>
+                </Button>
+              </Tooltip>
+
+              {/* 다크 모드 토글 */}
+              <Button
+                type="text"
+                icon={isDarkMode ? <BulbFilled style={{ color: '#ffcc00' }} /> : <BulbOutlined />}
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <span style={{ fontSize: '13px' }}>{isDarkMode ? '다크 모드' : '라이트 모드'}</span>
+              </Button>
             </>
-          ) : (
-            <Tooltip title="로컬 스토리지에 안전하게 저장되었습니다.">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <CheckCircleFilled style={{ color: '#52c41a' }} />
-                <span>저장 완료</span>
-              </div>
-            </Tooltip>
           )}
         </div>
+
+        {/* 자동 저장 인디케이터 (데스크톱 전용) */}
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.85)', fontSize: '13px', zIndex: 2 }}>
+            {isSaving ? (
+              <>
+                <LoadingOutlined /> <span>저장 중...</span>
+              </>
+            ) : (
+              <Tooltip title="로컬 스토리지에 안전하게 저장되었습니다.">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircleFilled style={{ color: '#52c41a' }} />
+                  <span>저장 완료</span>
+                </div>
+              </Tooltip>
+            )}
+          </div>
+        )}
+
+        {/* 모바일 햄버거 메뉴 버튼 */}
+        {isMobile && (
+          <Button
+            type="text"
+            icon={<MenuOutlined style={{ fontSize: '20px', color: 'white' }} />}
+            onClick={() => setIsMenuOpen(true)}
+          />
+        )}
       </Header>
+
+      {/* 모바일 사이드 메뉴 (Drawer) */}
+      <Drawer
+        title="메뉴"
+        placement="right"
+        onClose={() => setIsMenuOpen(false)}
+        open={isMenuOpen}
+        size="default"
+      >
+        <Space orientation="vertical" style={{ width: '100%' }} size={16}>
+          <Button
+            block
+            icon={<PictureOutlined />}
+            onClick={() => {
+              setIsCoverModalOpen(true);
+              setIsMenuOpen(false);
+            }}
+          >
+            표지 꾸미기
+          </Button>
+          <Button
+            block
+            icon={<DownloadOutlined />}
+            onClick={() => {
+              exportTripToFile(trip);
+              setIsMenuOpen(false);
+            }}
+          >
+            내보내기
+          </Button>
+          <Button
+            block
+            icon={isDarkMode ? <BulbFilled style={{ color: '#ffcc00' }} /> : <BulbOutlined />}
+            onClick={() => setIsDarkMode(!isDarkMode)}
+          >
+            {isDarkMode ? '라이트 모드' : '다크 모드'}
+          </Button>
+          <div style={{ padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {isSaving ? '저장 중...' : '자동 저장 완료'}
+            </Text>
+          </div>
+        </Space>
+      </Drawer>
+
+
 
       {/* 표지 설정 모달 */}
       <Modal
@@ -623,40 +716,52 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
         />
       </Modal>
 
-      {/* 실시간 통계 대시보드 (Global Dashboard) */}
-      <div style={{
-        background: isDarkMode ? '#1f1f1f' : '#f8fafc',
-        borderBottom: `1px solid ${isDarkMode ? '#303030' : '#e2e8f0'}`,
-        padding: '8px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '32px',
-        boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.02)',
-      }}>
-        <Space size={4}>
-          <EnvironmentOutlined style={{ color: '#64748b' }} />
-          <Text type="secondary" style={{ fontSize: '12px' }}>총 장소:</Text>
-          <Text strong style={{ fontSize: '13px' }}>{globalStats.totalPlaces}개</Text>
-        </Space>
-        <Space size={4}>
-          <CompassOutlined style={{ color: '#64748b' }} />
-          <Text type="secondary" style={{ fontSize: '12px' }}>총 거리:</Text>
-          <Text strong style={{ fontSize: '13px' }}>{(globalStats.totalDistance / 1000).toFixed(1)}km</Text>
-        </Space>
-        <Space size={4}>
-          <WalletOutlined style={{ color: '#64748b' }} />
-          <Text type="secondary" style={{ fontSize: '12px' }}>총 예산:</Text>
-          <Text strong style={{ fontSize: '13px', color: '#059669' }}>
-            {globalStats.totalBudget.toLocaleString()}원
-          </Text>
-        </Space>
-        <div style={{ marginLeft: 'auto' }}>
-          <Badge status="processing" text={<Text type="secondary" style={{ fontSize: '11px' }}>실시간 분석 중</Text>} />
-        </div>
-      </div>
+      {/* 실시간 통계 대시보드 (조건부 렌더링 또는 간소화) */}
+      {
+        !isMobile && (
+          <div style={{
+            background: isDarkMode ? '#1f1f1f' : '#f8fafc',
+            borderBottom: `1px solid ${isDarkMode ? '#303030' : '#e2e8f0'}`,
+            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '32px',
+            boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.02)',
+            flexWrap: 'wrap', // 줄 바꿈 허용
+            width: '100%',
+            maxWidth: '100vw',
+            overflowX: 'hidden'
+          }}>
+            <Space size={4}>
+              <EnvironmentOutlined style={{ color: '#64748b' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>총 장소:</Text>
+              <Text strong style={{ fontSize: '13px' }}>{globalStats.totalPlaces}개</Text>
+            </Space>
+            <Space size={4}>
+              <CompassOutlined style={{ color: '#64748b' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>총 거리:</Text>
+              <Text strong style={{ fontSize: '13px' }}>{(globalStats.totalDistance / 1000).toFixed(1)}km</Text>
+            </Space>
+            <Space size={4}>
+              <WalletOutlined style={{ color: '#64748b' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>총 예산:</Text>
+              <Text strong style={{ fontSize: '13px', color: '#059669' }}>
+                {globalStats.totalBudget.toLocaleString()}원
+              </Text>
+            </Space>
+            <div style={{ marginLeft: 'auto' }}>
+              <Badge status="processing" text={<Text type="secondary" style={{ fontSize: '11px' }}>실시간 분석 중</Text>} />
+            </div>
+          </div>
+        )
+      }
 
       {/* 3-Zone 레이아웃 */}
-      <Content style={{ display: 'flex', height: 'calc(100vh - 56px - 40px)', overflow: 'hidden' }}>
+      <Content style={{
+        display: 'flex',
+        height: isMobile ? 'calc(100vh - 56px)' : 'calc(100vh - 56px - 40px)',
+        overflow: 'hidden'
+      }}>
         {/* Zone A & B Container (Desktop: Row, Mobile: Scrollable Column) */}
         <div className="panel-container" style={{ display: 'flex', height: '100%' }}>
           {/* Zone A: 일차별 퀵 내비게이터 (260px Fixed) */}
@@ -700,7 +805,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           />
         </div>
       </Content>
-    </Layout>
+    </Layout >
   );
 }
 

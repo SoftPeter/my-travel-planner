@@ -53,26 +53,45 @@ export default function ZoneC_MapEngine({
                         {places.map((place, index) => {
                             const isEditing = editingPlaceId === place.tempId;
                             return (
-                                <Marker
-                                    key={place.tempId}
-                                    position={place.position}
-                                    onClick={() => onPlaceSelect(place.tempId)}
-                                    label={{
-                                        text: `${index + 1}`,
-                                        color: 'white',
-                                        fontSize: '14px',
-                                        fontWeight: 'bold',
-                                    }}
-                                    icon={{
-                                        path: google.maps.SymbolPath.CIRCLE,
-                                        scale: isEditing ? 12 : 10,
-                                        fillColor: isEditing ? '#ff4d4f' : '#3b82f6',
-                                        fillOpacity: 1,
-                                        strokeColor: 'white',
-                                        strokeWeight: 2,
-                                    }}
-                                    animation={isEditing ? google.maps.Animation.BOUNCE : undefined}
-                                />
+                                <React.Fragment key={place.tempId}>
+                                    <Marker
+                                        position={place.position}
+                                        onClick={() => onPlaceSelect(place.tempId)}
+                                        label={{
+                                            text: `${index + 1}`,
+                                            color: 'white',
+                                            fontSize: '14px',
+                                            fontWeight: 'bold',
+                                        }}
+                                        icon={{
+                                            path: google.maps.SymbolPath.CIRCLE,
+                                            scale: isEditing ? 12 : 10,
+                                            fillColor: isEditing ? '#ff4d4f' : '#3b82f6',
+                                            fillOpacity: 1,
+                                            strokeColor: 'white',
+                                            strokeWeight: 2,
+                                        }}
+                                        animation={isEditing ? google.maps.Animation.BOUNCE : undefined}
+                                    />
+                                    {/* 메모 인디케이터 (메모가 있을 경우 우측 상단에 작은 점 표시) */}
+                                    {place.memo && (
+                                        <Marker
+                                            position={{
+                                                lat: place.position.lat + 0.00015,
+                                                lng: place.position.lng + 0.00015
+                                            }}
+                                            icon={{
+                                                path: google.maps.SymbolPath.CIRCLE,
+                                                scale: 5,
+                                                fillColor: '#faad14', // AntD Warning Gold
+                                                fillOpacity: 1,
+                                                strokeColor: 'white',
+                                                strokeWeight: 1,
+                                            }}
+                                            zIndex={2000}
+                                        />
+                                    )}
+                                </React.Fragment>
                             );
                         })}
 

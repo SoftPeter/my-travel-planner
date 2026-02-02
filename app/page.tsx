@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Layout, Typography, Card, Button, Row, Col, FloatButton, Empty, Skeleton, Input, Modal, App } from 'antd';
+import { Layout, Typography, Card, Button, Row, Col, FloatButton, Empty, Skeleton, Input, Modal, App, Grid } from 'antd';
 import { PlusOutlined, CalendarOutlined, UploadOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { Trip } from './types';
@@ -10,9 +10,13 @@ import { importTripFromFile } from './utils/fileHandler';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function Home() {
   const router = useRouter();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md; // md(768px) 이하를 모바일로 간주
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,16 +90,19 @@ export default function Home() {
       {/* 헤더 */}
       <Header style={{
         background: 'white',
-        padding: '0 24px',
+        padding: isMobile ? '0 16px' : '0 24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '64px',
         zIndex: 10,
+        position: 'sticky',
+        top: 0,
+        width: '100%'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <Title level={4} style={{ margin: 0, color: '#1890ff', whiteSpace: 'nowrap' }}>
             ✈️ 여행갈래
           </Title>
         </div>
@@ -109,20 +116,20 @@ export default function Home() {
           />
           <Button
             icon={<UploadOutlined />}
-            size="large"
+            size={isMobile ? 'middle' : 'large'}
             onClick={handleImportClick}
             style={{ borderRadius: '20px' }}
           >
-            가져오기
+            {!isMobile && '가져오기'}
           </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            size="large"
+            size={isMobile ? 'middle' : 'large'}
             style={{ borderRadius: '20px' }}
             onClick={handleCreateClick}
           >
-            새 여행 만들기
+            {!isMobile ? '새 여행 만들기' : '새 여행'}
           </Button>
         </div>
       </Header>
