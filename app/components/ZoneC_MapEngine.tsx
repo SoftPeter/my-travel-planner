@@ -10,6 +10,7 @@ interface ZoneCProps {
     places: Place[];
     segments: TravelSegment[];
     editingPlaceId: number | null;
+    focusedPlaceId?: number | null;
     onPlaceAdd: (place: Partial<Place>) => void;
     onPlaceSelect: (placeId: number) => void;
 }
@@ -22,6 +23,7 @@ export default function ZoneC_MapEngine({
     places,
     segments,
     editingPlaceId,
+    focusedPlaceId,
     onPlaceAdd,
     onPlaceSelect,
 }: ZoneCProps) {
@@ -96,7 +98,7 @@ export default function ZoneC_MapEngine({
                         })}
 
                         {/* 편집 중인 장소로 지도 중심 이동 */}
-                        <MapCenterSync places={places} editingPlaceId={editingPlaceId} />
+                        <MapCenterSync places={places} editingPlaceId={editingPlaceId} focusedPlaceId={focusedPlaceId} />
                     </>
                 )}
             </Map>
@@ -188,18 +190,23 @@ function RoutePolylines({ places, segments }: { places: Place[], segments: Trave
 /**
  * 편집 중인 장소로 지도 중심 이동
  */
-function MapCenterSync({ places, editingPlaceId }: { places: Place[], editingPlaceId: number | null }) {
+function MapCenterSync({ places, editingPlaceId, focusedPlaceId }: { places: Place[], editingPlaceId: number | null, focusedPlaceId?: number | null }) {
     const map = useMap();
 
     useEffect(() => {
-        if (!map || !editingPlaceId) return;
+        if (!map) return;
 
-        const editingPlace = places.find(p => p.tempId === editingPlaceId);
-        if (editingPlace) {
-            map.panTo(editingPlace.position);
+        // 편집 중이거나 포커스된 장소가 있을 때 이동
+        const targetId = editingPlaceId || focusedPlaceId;
+        if (!targetId) return;
+
+        const targetPlace = places.find(p => p.tempId === targetId);
+        if (targetPlace) {
+            map.panTo(targetPlace.position);
+            // 편집 모드가 아닐 때(스크롤 포커스)는 줌이 너무 확 바뀌지 않는게 좋을 수도 있지만, 기획안에 따라 15 고정
             map.setZoom(15);
         }
-    }, [map, editingPlaceId, places]);
+    }, [map, editingPlaceId, focusedPlaceId, places]);
 
     return null;
 }

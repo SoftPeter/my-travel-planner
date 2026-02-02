@@ -1,3 +1,4 @@
+import React from 'react';
 import { Typography, Empty, theme } from 'antd';
 const { useToken } = theme;
 import { EnvironmentOutlined } from '@ant-design/icons';
@@ -22,6 +23,8 @@ interface ZoneBProps {
     onPlaceRemove: (tempId: number) => void;
     onSegmentModeChange: (index: number, mode: TravelMode) => void;
     onEditingChange: (placeId: number | null) => void;
+    onFocusedPlaceChange?: (placeId: number | null) => void;
+    focusedPlaceId?: number | null;
 }
 
 /**
@@ -39,9 +42,15 @@ export default function ZoneB_Timeline({
     onPlaceRemove,
     onSegmentModeChange,
     onEditingChange,
+    onFocusedPlaceChange,
+    focusedPlaceId,
 }: ZoneBProps) {
 
-    // 드래그 센서 설정
+    const { token } = useToken();
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -59,10 +68,6 @@ export default function ZoneB_Timeline({
             onPlacesReorder(reordered);
         }
     };
-
-    const { token } = useToken();
-    const screens = useBreakpoint();
-    const isMobile = !screens.md;
 
     return (
         <div className="timeline-inner" style={{
@@ -90,7 +95,11 @@ export default function ZoneB_Timeline({
                             const isEditing = editingPlaceId === place.tempId;
 
                             return (
-                                <div key={place.tempId}>
+                                <div
+                                    key={place.tempId}
+                                    data-id={place.tempId}
+                                    className="smart-card-wrapper"
+                                >
                                     {/* Smart Card */}
                                     <SmartCard
                                         place={place}
@@ -98,7 +107,11 @@ export default function ZoneB_Timeline({
                                         onRemove={onPlaceRemove}
                                         onUpdate={onPlaceUpdate}
                                         isEditing={isEditing}
+                                        isFocused={focusedPlaceId === place.tempId}
                                         onEditStart={() => onEditingChange(place.tempId)}
+                                        onFocus={() => {
+                                            if (onFocusedPlaceChange) onFocusedPlaceChange(place.tempId);
+                                        }}
                                     />
 
                                     {/* Dynamic Gap (마지막 카드 제외) */}

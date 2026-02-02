@@ -71,6 +71,9 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   // 편집 중인 장소 ID
   const [editingPlaceId, setEditingPlaceId] = useState<number | null>(null);
 
+  // (모바일 전용) 스크롤에 의해 포커스된 장소 ID
+  const [focusedPlaceId, setFocusedPlaceId] = useState<number | null>(null);
+
   // 저장 중 상태
   const [isSaving, setIsSaving] = useState(false);
 
@@ -790,6 +793,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
               onPlaceRemove={removePlace}
               onSegmentModeChange={changeSegmentMode}
               onEditingChange={togglePlaceSelection}
+              onFocusedPlaceChange={setFocusedPlaceId}
             />
           </div>
         </div>
@@ -799,7 +803,8 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           <ZoneC_MapEngine
             places={places}
             segments={segments}
-            editingPlaceId={editingPlaceId}
+            editingPlaceId={editingPlaceId} // 마커 스타일링용
+            focusedPlaceId={focusedPlaceId} // 지도 중심 이동용 (모바일 스크롤)
             onPlaceAdd={addPlace}
             onPlaceSelect={togglePlaceSelection}
           />
