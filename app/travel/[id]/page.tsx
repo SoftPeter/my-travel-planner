@@ -164,7 +164,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
     if (typeof window !== 'undefined') {
       const url = window.location.href;
       navigator.clipboard.writeText(url).then(() => {
-        message.success('여행 공유 링크가 복사되었습니다! 다른 사용자에게 공유해보세요. ✈️');
+        message.success('여행 공유 링크가 복사되었습니다! ✈️', 1.5);
       });
     }
   };
