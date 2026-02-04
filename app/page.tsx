@@ -86,7 +86,7 @@ export default function Home() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+    <Layout className="home-layout" style={{ minHeight: '100vh', background: '#f0f2f5', display: 'block' }}>
       {/* 헤더 */}
       <Header style={{
         background: 'white',
@@ -135,7 +135,13 @@ export default function Home() {
       </Header>
 
       {/* 컨텐츠 (리스트 화면) */}
-      <Content style={{ padding: '40px 24px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <Content style={{
+        padding: isMobile ? '24px 16px 140px 16px' : '40px 24px', // 하단 여백 추가 증설 (140px)
+        maxWidth: '1200px',
+        margin: '0 auto',
+        width: '100%',
+        minHeight: 'auto' // 높이 고정 해제
+      }}>
         <div style={{ marginBottom: '24px' }}>
           <Title level={3} style={{ marginBottom: '8px' }}>내 여행 리스트</Title>
           <Text type="secondary">떠나고 싶은 여행 계획을 관리해보세요.</Text>

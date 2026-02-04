@@ -420,7 +420,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh', background: isDarkMode ? '#141414' : 'white' }}>
+    <Layout className="travel-planner-container" style={{ minHeight: '100vh', background: isDarkMode ? '#141414' : 'white' }}>
       <Header style={{
         backgroundImage: trip?.coverImage
           ? (trip.coverImage.startsWith('http')
