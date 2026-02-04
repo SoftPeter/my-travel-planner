@@ -1,73 +1,101 @@
 # 🗺️ Travel Planner: Your Ultimate Journey Architect
-> *Plan smarter, travel smoother. Experience the future of route planning.*
+> *Plan smarter, travel smoother. Experience the future of collaborative route planning.*
 
-![Travel Planner Banner](https://img.shields.io/badge/Project-Travel%20Planner-blue?style=for-the-badge&logo=googlemaps) ![Build Status](https://img.shields.io/badge/Build-Success-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Next.js-16.1.4-black?style=for-the-badge&logo=next.js)
+![Travel Planner Banner](https://img.shields.io/badge/Project-Travel%20Planner-blue?style=for-the-badge&logo=googlemaps) ![Build Status](https://img.shields.io/badge/Build-Success-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Next.js-16.1.4-black?style=for-the-badge&logo=next.js) ![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-orange?style=for-the-badge&logo=firebase)
 
 ---
 
 ## 🚀 Project Overview
 
-**"복잡한 여행 계획, 직관적인 시각화로 해결하다."**
+**"복잡한 여행 계획, 직관적인 시각화와 실시간 협업으로 해결하다."**
 
 기존의 엑셀 시트나 메모장 기반의 여행 계획은 지루하고 동선을 파악하기 어렵습니다. 
-**Travel Planner**는 **지도(Map)와 타임라인(Timeline)을 완벽하게 결합**하여, 사용자가 **직관적인 동선 관리**를 할 수 있도록 설계된 차세대 웹 애플리케이션입니다.
+**Travel Planner**는 **지도(Map)와 타임라인(Timeline)을 완벽하게 결합**하고, **Firebase 기반의 실시간 협업** 기능을 더해 가족, 친구와 함께 동선을 짜는 즐거움을 선사합니다.
 
 여행의 *시작*부터 *끝*까지, 당신의 여정을 하나의 아름다운 스토리로 만들어 드립니다.
 
 ---
 
-## ✨ Key Features
+## ✨ Core Features (Technical Spec)
 
-### 1. 🎨 Visualizing Imagination
-- **Hybrid View**: 좌측의 타임라인(일정)과 우측의 지도(Google Maps)가 실시간으로 연동됩니다.
+### 1. 🔄 실시간 동기화 및 협업 (Real-time Collaboration)
+- **Live Sync Engine**: Custom Hook `useTripData`와 **1초 디바운싱(Debouncing)** 로직을 통해 타이핑 중에도 부하 없이 DB와 실시간으로 동기화됩니다.
+- **Independent UI State**: `currentDayId`(현재 보고 있는 일차)와 같은 UI 상태는 각 사용자의 브라우저 **로컬 상태(Local State)**로 관리됩니다. 덕분에 내가 1일 차를 볼 때 상대방이 3일 차를 봐도 서로의 화면이 강제로 이동하지 않습니다.
+- **Anonymous Auth**: Firebase 익명 인증을 활용하여 번거로운 가입 절차 없이 즉시 보안이 확보된 협업 환경을 제공합니다.
+
+### 2. 🛣️ 스마트 경로 시각화 (Smart Visualization)
+- **Hybrid View**: 좌측의 타임라인(일정)과 우측의 지도(Google Maps)가 완벽 연동됩니다.
 - **Live Polyline**: 장소를 추가하는 즉시 지도 위에 **파란색 여행 동선(Polyline)**이 그려져 이동 경로를 한눈에 파악할 수 있습니다.
-- **Auto-Indexing**: 장소 순서에 따라 지도 마커에 `1`, `2`, `3` 번호가 자동으로 매겨집니다.
+- **Auto-Indexing**: 장소 순서에 따라 지도 마커에 방문 번호가 자동으로 매겨집니다.
 
-### 2. 🧠 Smart Calculations
-- **Dynamic Gap Analysis**: 장소와 장소 사이의 **이동 거리(m/km)**와 **예상 소모 시간**을 자동으로 계산하여 알려줍니다.
-- **Budget & Time Management**: 각 장소별 예산과 방문 시간을 입력하면 전체 여행의 총 예산과 소요 시간을 **자동으로 합산**해줍니다.
+### 3. 💾 지능형 데이터 관리 (Data Management)
+- **Auto Migration**: 앱 첫 실행 시 브라우저(`LocalStorage`)에 저장되어 있던 기존 데이터를 탐지하여 Firebase 실시간 DB로 **자동 마이그레이션**합니다.
+- **Smart Sharing**: 공유 링크를 통해 접속하면 해당 여행 ID가 방문자의 로컬 리스트에 자동 등록되어, 언제든지 홈 화면에서 다시 접근할 수 있습니다.
 
-### 3. 📱 Mobile-First Experience (New!)
-모바일 환경에서도 PC 못지않은 강력한 편집 기능을 제공하기 위해 UX를 극한으로 끌어올렸습니다.
-- **Smart Input**: 시간 입력 시 숫자(`1400`)만 쳐도 `14:00`으로 자동 변환되는 **매직 포맷팅**.
-- **Touch-Optimized**: 롱프레스(Long-press)로 간편하게 날짜를 삭제하고, 드래그 앤 드롭으로 순서를 바꿀 수 있습니다.
-- **Click-to-Map**: 카드 번호(①, ②)를 클릭하면 **지도가 즉시 해당 장소로 이동**합니다. (스크롤 방해 Zero!)
-- **Auto-Save**: 별도의 저장 버튼 없이도, 모달을 닫으면 **수정 사항이 즉시 저장**됩니다.
+### 4. 📱 모바일 최적화 UX
+- **Click-to-Map**: 카드 번호(①, ②) 클릭 시 지도가 즉시 해당 위치로 이동하여 스크롤 피로도를 줄입니다.
+- **Magic Formatting**: 시간 입력 시 숫자만 쳐도(`1400` → `14:00`) 자동 변환되는 편의 기능을 제공합니다.
 
 ---
 
 ## 🛠️ Tech Stack
 
-이 프로젝트는 최상의 성능과 사용자 경험을 위해 **최신 기술 스택**으로 무장했습니다.
-
 | Category | Technology |
 | :--- | :--- |
-| **Framework** | ![Next.js](https://img.shields.io/badge/Next.js_16-balck?logo=next.js) **App Router** 기반의 최신 구조 |
-| **Language** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) 타입 안정성을 보장하는 개발 |
-| **UI Library** | ![Ant Design](https://img.shields.io/badge/Ant_Design_6-0170FE?logo=antdesign&logoColor=white) + ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?logo=tailwindcss&logoColor=white) |
+| **Framework** | ![Next.js](https://img.shields.io/badge/Next.js_16-balck?logo=next.js) **App Router** 기반 |
+| **Database** | ![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-orange?logo=firebase) **실시간 동기화 노드** |
+| **Auth** | **Firebase Anonymous Authentication** (익명 인증) |
+| **Language** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) |
+| **UI Library** | ![Ant Design](https://img.shields.io/badge/Ant_Design_6-0170FE?logo=antdesign&logoColor=white) |
 | **Map Engine** | **@vis.gl/react-google-maps** (Google Maps Platform) |
-| **Interaction** | **@dnd-kit** (부드러운 드래그 앤 드롭 구현) |
 
 ---
 
-## 💎 UX/UI Detail Focus
+## 🔑 Environment Variables
 
-작은 디테일이 명품을 만듭니다. 우리는 **사용자의 귀찮음**을 해결하는 데 집중했습니다.
+프로젝트 실행 및 배포를 위해 아래 환경 변수 설정이 필요합니다. `.env.local` 파일을 생성하여 값을 입력하세요.
 
-### 🕹️ Stickiness & Navigation
-- **Sticky Day Navigator**: 스크롤을 내려도 날짜 선택 바가 화면 상단에 찰싹 붙어 있어, 언제든 다른 날짜로 점프할 수 있습니다.
-- **Re-indexing Logic**: 중간 날짜(Day 2)를 삭제하면, 뒤에 있던 일정들이 자동으로 당겨와지며(Day 3 → Day 2) 여행의 연속성을 유지합니다.
+```bash
+# Google Maps API
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
 
-### 💡 Visual Cues (Memo Indicators)
-- **"기억을 돕는 점"**: 메모가 작성된 장소는 지도 마커 우측 상단에 **노란색 점(Dot)**이 표시됩니다. 지도를 보면서 "아, 여기 뭐 적어놨었지!"라고 즉시 인지할 수 있습니다.
-- **In-List Icon**: 타임라인 카드에도 📝 아이콘이 표시되어 상세 정보를 놓치지 않게 돕습니다.
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
 
-### 🖥️ Seamless Cross-Platform
-- **PC Inline Editing**: PC에서는 클릭 한 번으로 인라인 편집 모드로 전환되어 생산성을 높입니다.
-- **Mobile Immersive Modal**: 모바일에서는 꽉 찬 화면의 모달로 집중도 높은 편집 환경을 제공합니다.
+---
+
+## 🛡️ Security & Deployment
+
+### 1. Firebase Security Rules
+유료 결제 없이도 보안을 유지하며 영구적으로 사용 가능한 규칙 설정 예시입니다:
+
+```json
+{
+  "rules": {
+    "trips": {
+      "$tripId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
+```
+*(Firebase Console > Realtime Database > Rules 탭에 적용 가능)*
+
+### 2. Vercel 배포 시 주의사항
+- Vercel 프로젝트 설정의 **Environment Variables** 탭에 상기 나열된 모든 키값을 반드시 등록해야 정상 작동합니다.
+- `NEXT_PUBLIC_` 접두사가 붙은 변수만 클라이언트 측에서 참조 가능하므로 주의가 필요합니다.
 
 ---
 
 <p align="center">
   <i>Developed with ❤️ by Your AI Assistant, Antigravity.</i>
-</p>
+</p>+

@@ -70,7 +70,7 @@ export interface Day {
 export interface Trip {
   id: string; // 고유 ID
   days: Day[];
-  currentDayId: string;
+  currentDayId?: string; // 현재 선택된 날짜 ID (UI 상태)
   tripName: string;
   startDate: string; // YYYY-MM-DD
   coverImage?: string; // 커버 이미지 (그라데이션 CSS 또는 이미지 URL)

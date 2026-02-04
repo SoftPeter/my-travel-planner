@@ -15,7 +15,10 @@ import {
   DownloadOutlined,
   PictureOutlined,
   MenuOutlined,
-  PlusOutlined
+  PlusOutlined,
+  ShareAltOutlined,
+  CloudSyncOutlined,
+  CloudUploadOutlined
 } from '@ant-design/icons';
 import { Drawer } from 'antd';
 import { useRouter, useParams } from 'next/navigation';
@@ -29,6 +32,7 @@ import { useDirections } from '../../hooks/useDirections';
 import ZoneA_DayNavigator from '../../components/ZoneA_DayNavigator';
 import ZoneB_Timeline from '../../components/ZoneB_Timeline';
 import ZoneC_MapEngine from '../../components/ZoneC_MapEngine';
+import { useTripData } from '../../hooks/useTripData';
 
 // ...
 
@@ -49,17 +53,70 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  // 전체 여행 데이터
-  const [trip, setTrip] = useState<Trip>({
-    id: '',
+
+
+  // Firebase 실시간 데이터 훅 사용
+  const { trip: remoteTrip, setTrip: setRemoteTrip, loading: dataLoading, isSaving } = useTripData(id);
+
+  // 로컬 초기화 상태 (새 여행 생성 시)
+  const [initialized, setInitialized] = useState(false);
+
+  // 전체 여행 데이터 (로컬 상태 제거 -> 훅 데이터 사용)
+  const trip: Trip = remoteTrip || {
+    id: id || '',
     days: [],
     currentDayId: '',
-    tripName: '나의 여행',
+    tripName: '로딩 중...',
     startDate: new Date().toISOString().split('T')[0],
-  });
+  };
+
+  // 현재 선택된 일차 ID (로컬 전용 상태로 관리하여 다른 사용자와 동기화되지 않음)
+  const [currentDayId, setCurrentDayId] = useState<string>('');
+
+  // 데이터 로드 시 초기 일차 설정
+  useEffect(() => {
+    if (trip.days.length > 0 && !currentDayId) {
+      setCurrentDayId(trip.days[0].id);
+    }
+  }, [trip.days, currentDayId]);
+
+
+  // 데이터가 없으면 초기화 (새 여행)
+  useEffect(() => {
+    if (!dataLoading && !remoteTrip && !initialized && id) {
+      const newTrip: Trip = {
+        id: id,
+        tripName: '나의 여행',
+        startDate: new Date().toISOString().split('T')[0],
+        days: [{
+          id: 'day-1',
+          date: new Date().toISOString().split('T')[0],
+          places: [],
+          travelModes: [],
+          totalDistance: 0,
+          totalDuration: 0,
+          totalBudget: 0
+        }],
+        currentDayId: 'day-1',
+      };
+      setRemoteTrip(newTrip);
+      setInitialized(true);
+    }
+  }, [dataLoading, remoteTrip, initialized, id, setRemoteTrip]);
+
+  // Trip Setter Wrapper
+  const setTrip = (newTrip: Trip | ((prev: Trip) => Trip)) => {
+    if (typeof newTrip === 'function') {
+      // 함수형 업데이트 지원을 위해 현재 trip 값 사용
+      setRemoteTrip(newTrip(trip));
+    } else {
+      setRemoteTrip(newTrip);
+    }
+  };
 
   // 현재 선택된 날짜의 장소들
-  const currentDay = trip.days.find(d => d.id === trip.currentDayId);
+  const currentDay = trip.days.find(d => d.id === currentDayId);
+
   // useMemo를 사용하여 places 배열의 참조 안정성 확보 (무한 루프 방지 핵심)
   const places = React.useMemo(() => {
     return currentDay?.places || [];
@@ -74,9 +131,6 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   // (모바일 전용) 스크롤에 의해 포커스된 장소 ID
   const [focusedPlaceId, setFocusedPlaceId] = useState<number | null>(null);
 
-  // 저장 중 상태
-  const [isSaving, setIsSaving] = useState(false);
-
   // 모바일 메뉴(햄버거) 열림 상태
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -88,52 +142,36 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
 
   // 전역 통계 정보 (대시보드용) - 실시간성 확보
   const currentDayStats = {
-    distance: segments.reduce((sum, s) => sum + s.distance, 0),
-    budget: places.reduce((sum, p) => sum + p.budget, 0),
+    distance: segments?.reduce((sum, s) => sum + (s.distance || 0), 0) || 0,
+    budget: places?.reduce((sum, p) => sum + (p.budget || 0), 0) || 0,
   };
 
   const globalStats = {
-    totalDays: trip.days.length,
-    totalPlaces: trip.days.reduce((sum, d) => sum + d.places.length, 0),
+    totalDays: trip.days?.length || 0,
+    totalPlaces: trip.days?.reduce((sum, d) => sum + (d.places?.length || 0), 0) || 0,
     // 현재 일차의 데이터는 trip.days의 이전 데이터 대신 실시간 계산된 값을 우선 사용
-    totalBudget: trip.days.reduce((sum, d) => {
+    totalBudget: trip.days?.reduce((sum, d) => {
       if (d.id === trip.currentDayId) return sum + currentDayStats.budget;
-      return sum + d.totalBudget;
-    }, 0),
-    totalDistance: trip.days.reduce((sum, d) => {
+      return sum + (d.totalBudget || 0);
+    }, 0) || 0,
+    totalDistance: trip.days?.reduce((sum, d) => {
       if (d.id === trip.currentDayId) return sum + currentDayStats.distance;
-      return sum + d.totalDistance;
-    }, 0),
+      return sum + (d.totalDistance || 0);
+    }, 0) || 0,
+  };
+  // 공유 기능 핸들러
+  const handleShare = () => {
+    if (typeof window !== 'undefined') {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        message.success('여행 공유 링크가 복사되었습니다! 다른 사용자에게 공유해보세요. ✈️');
+      });
+    }
   };
 
-  /**
-   * 초기 로드: 로컬 스토리지에서 데이터 복원 (ID 기반)
-   */
-  useEffect(() => {
-    if (!id) return;
 
-    const savedTrip = getTrip(id);
-    if (savedTrip) {
-      setTrip(savedTrip);
-      message.success('여행 데이터를 불러왔습니다!');
-    } else {
-      message.error('여행을 찾을 수 없습니다.');
-      router.push('/');
-    }
-  }, [id]);
 
-  /**
-   * 자동 저장: trip 상태가 변경될 때마다 로컬 스토리지에 저장
-   */
-  useEffect(() => {
-    if (trip.days.length > 0 && trip.id) {
-      setIsSaving(true);
-      saveTrip(trip);
-      // 저장 시각적 피드백을 위해 약간의 지연 후 완료 상태로 변경
-      const timer = setTimeout(() => setIsSaving(false), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [trip]);
+
 
   /**
    * 시작일 변경
@@ -170,14 +208,12 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
    * 날짜 선택
    */
   const selectDay = (dayId: string) => {
-    setTrip(prev => {
-      const selectedDay = prev.days.find(d => d.id === dayId);
-      if (selectedDay) {
-        // 해당 날짜의 이동 수단들로 상태 동기화
-        setTravelModes(selectedDay.travelModes || []);
-      }
-      return { ...prev, currentDayId: dayId };
-    });
+    const selectedDay = trip.days.find(d => d.id === dayId);
+    if (selectedDay) {
+      // 해당 날짜의 이동 수단들로 UI 상태 동기화
+      setTravelModes(selectedDay.travelModes || []);
+    }
+    setCurrentDayId(dayId);
     setEditingPlaceId(null);
   };
 
@@ -192,36 +228,32 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
    * 날짜 삭제
    */
   const removeDay = (dayId: string) => {
-    setTrip(prev => {
-      const deletedIndex = prev.days.findIndex(d => d.id === dayId);
-      const newDays = prev.days.filter(d => d.id !== dayId);
+    const deletedIndex = trip.days.findIndex(d => d.id === dayId);
+    const newDays = trip.days.filter(d => d.id !== dayId);
 
-      // 삭제 후 어떤 날짜를 선택할지 결정
-      let nextDayId = prev.currentDayId;
-      if (prev.currentDayId === dayId) {
-        // 현재 보고 있던 날짜를 지우는 경우
-        if (newDays.length > 0) {
-          // 같은 위치(인덱스)에 새로 올라온 날짜가 있으면 그 날짜 선택, 없으면 마지막 날짜 선택
-          const nextIndex = Math.min(deletedIndex, newDays.length - 1);
-          nextDayId = newDays[nextIndex].id;
-        } else {
-          nextDayId = '';
-        }
+    // 삭제 후 어떤 날짜를 선택할지 결정
+    let nextDayId = currentDayId;
+    if (currentDayId === dayId) {
+      if (newDays.length > 0) {
+        const nextIndex = Math.min(deletedIndex, newDays.length - 1);
+        nextDayId = newDays[nextIndex].id;
+      } else {
+        nextDayId = '';
       }
+    }
 
-      return {
-        ...prev,
-        days: newDays,
-        currentDayId: nextDayId,
-      };
-    });
+    setTrip(prev => ({
+      ...prev,
+      days: newDays,
+    }));
+    setCurrentDayId(nextDayId);
   };
 
   /**
    * 장소 추가
    */
   const addPlace = (placeData: Partial<Place>) => {
-    if (!trip.currentDayId) {
+    if (!currentDayId) {
       message.warning('먼저 날짜를 추가해주세요!');
       return;
     }
@@ -307,17 +339,14 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
   const updateCurrentDay = (updater: (day: Day) => Day) => {
     setTrip(prev => {
       const newDays = prev.days.map(d => {
-        if (d.id === prev.currentDayId) {
+        if (d.id === currentDayId) {
           const updated = updater(d);
-          // 간단한 Shallow Compare로 불필요한 객체 생성 방지 (선택 사항이나 안전장치)
           return JSON.stringify(d) === JSON.stringify(updated) ? d : updated;
         }
         return d;
       });
 
-      // days 배열 자체가 안 바뀌었으면 prev 반환
       if (newDays.every((d, i) => d === prev.days[i])) return prev;
-
       return { ...prev, days: newDays };
     });
   };
@@ -326,7 +355,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
    * 일차별 요약 정보 계산 (무한 루프 방지 비교)
    */
   useEffect(() => {
-    if (!trip.currentDayId || !currentDay) return;
+    if (!currentDayId || !currentDay) return;
 
     const totalDistance = segments.reduce((sum, s) => sum + s.distance, 0);
     const totalDuration = segments.reduce((sum, s) => sum + s.duration, 0);
@@ -335,11 +364,13 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
     // 이동 수단별 합계 계산
     const modeStats: NonNullable<Day['modeStats']> = {};
     segments.forEach(s => {
-      if (!modeStats[s.mode]) {
-        modeStats[s.mode] = { distance: 0, duration: 0 };
+      if (s && s.mode) {
+        if (!modeStats[s.mode]) {
+          modeStats[s.mode] = { distance: 0, duration: 0 };
+        }
+        modeStats[s.mode]!.distance += (s.distance || 0);
+        modeStats[s.mode]!.duration += (s.duration || 0);
       }
-      modeStats[s.mode]!.distance += s.distance;
-      modeStats[s.mode]!.duration += s.duration;
     });
 
     // 변경 사항이 있을 때만 업데이트 (Deep Compare)
@@ -376,10 +407,22 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
     setIsEditingTitle(!isEditingTitle);
   };
 
+  // 초기 로딩 화면 (모든 Hook 정의 후 위치해야 함)
+  if (dataLoading && !remoteTrip && !initialized) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', background: isDarkMode ? '#141414' : '#fff' }}>
+        <LoadingOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+        <Text type="secondary" style={{ color: isDarkMode ? 'rgba(255,255,255,0.45)' : undefined }}>
+          여행 데이터를 불러오고 있습니다...
+        </Text>
+      </div>
+    );
+  }
+
   return (
     <Layout style={{ minHeight: '100vh', background: isDarkMode ? '#141414' : 'white' }}>
       <Header style={{
-        backgroundImage: trip.coverImage
+        backgroundImage: trip?.coverImage
           ? (trip.coverImage.startsWith('http')
             ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${trip.coverImage})`
             : trip.coverImage)
@@ -419,7 +462,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
               onPressEnter={toggleEditTitle}
               autoFocus
               style={{
-                width: isMobile ? '150px' : '300px',
+                width: isMobile ? '120px' : '300px',
                 fontSize: '16px',
                 fontWeight: 'bold',
                 background: 'rgba(255,255,255,0.2)',
@@ -437,7 +480,7 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
                 color: 'white',
                 margin: 0,
                 fontWeight: 'bold',
-                maxWidth: isMobile ? '150px' : 'none',
+                maxWidth: isMobile ? '120px' : 'none',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
@@ -451,6 +494,16 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           {/* PC 전용 부가 기능 버튼들 */}
           {!isMobile && (
             <>
+              {/* 공유 버튼 (PC) */}
+              <Button
+                type="text"
+                icon={<ShareAltOutlined />}
+                onClick={handleShare}
+                style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <span style={{ fontSize: '13px' }}>공유하기</span>
+              </Button>
+
               {/* 표지 변경 버튼 */}
               <Tooltip title="여행 분위기에 맞는 표지를 설정해보세요!">
                 <Button
@@ -488,32 +541,36 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           )}
         </div>
 
-        {/* 자동 저장 인디케이터 (데스크톱 전용) */}
-        {!isMobile && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.85)', fontSize: '13px', zIndex: 2 }}>
-            {isSaving ? (
-              <>
-                <LoadingOutlined /> <span>저장 중...</span>
-              </>
-            ) : (
-              <Tooltip title="로컬 스토리지에 안전하게 저장되었습니다.">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckCircleFilled style={{ color: '#52c41a' }} />
-                  <span>저장 완료</span>
-                </div>
-              </Tooltip>
-            )}
-          </div>
-        )}
+        {/* 저장 인디케이터 & 공유 (모바일 포함) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 2 }}>
+          {isSaving ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}>
+              <CloudSyncOutlined spin />
+              {!isMobile && <span>저장 중...</span>}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.85)', fontSize: '13px' }}>
+              <CloudUploadOutlined style={{ color: '#b7eb8f' }} />
+              {!isMobile && <span>자동 저장됨</span>}
+            </div>
+          )}
 
-        {/* 모바일 햄버거 메뉴 버튼 */}
-        {isMobile && (
-          <Button
-            type="text"
-            icon={<MenuOutlined style={{ fontSize: '20px', color: 'white' }} />}
-            onClick={() => setIsMenuOpen(true)}
-          />
-        )}
+          {isMobile && (
+            <Space size={4}>
+              <Button
+                type="text"
+                icon={<ShareAltOutlined style={{ color: 'white', fontSize: '18px' }} />}
+                onClick={handleShare}
+              />
+              <Button
+                type="text"
+                icon={<MenuOutlined style={{ fontSize: '20px', color: 'white' }} />}
+                onClick={() => setIsMenuOpen(true)}
+              />
+            </Space>
+          )}
+        </div>
+
       </Header>
 
       {/* 모바일 사이드 메뉴 (Drawer) */}
@@ -770,8 +827,8 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           {/* Zone A: 일차별 퀵 내비게이터 (260px Fixed) */}
           <div className="zone-nav" style={{ width: '260px', flexShrink: 0, borderRight: '1px solid #f0f0f0', overflow: 'hidden' }}>
             <ZoneA_DayNavigator
-              days={trip.days}
-              currentDayId={trip.currentDayId}
+              days={trip.days || []}
+              currentDayId={currentDayId}
               startDate={trip.startDate}
               onDaySelect={selectDay}
               onAddDay={addDay}
@@ -783,9 +840,9 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
           {/* Zone B: 스토리보드 타임라인 (450px Fixed) */}
           <div className="zone-timeline" style={{ width: '450px', flexShrink: 0, borderRight: '1px solid #f0f0f0', overflow: 'hidden', zIndex: 10 }}>
             <ZoneB_Timeline
-              places={places}
-              segments={segments}
-              validationResults={validationResults}
+              places={places || []}
+              segments={segments || []}
+              validationResults={validationResults || []}
               editingPlaceId={editingPlaceId}
               loading={directionsLoading}
               onPlacesReorder={reorderPlaces}
@@ -801,8 +858,8 @@ function TravelPlanner({ isDarkMode, setIsDarkMode }: TravelPlannerProps) {
         {/* Zone C: 동선 시각화 엔진 (Flexible) */}
         <div className="zone-map" style={{ flex: 1, position: 'relative' }}>
           <ZoneC_MapEngine
-            places={places}
-            segments={segments}
+            places={places || []}
+            segments={segments || []}
             editingPlaceId={editingPlaceId} // 마커 스타일링용
             focusedPlaceId={focusedPlaceId} // 지도 중심 이동용 (모바일 스크롤)
             onPlaceAdd={addPlace}
