@@ -1,7 +1,7 @@
 import React from 'react';
-import { Typography, Empty, theme } from 'antd';
+import { Typography, Empty, theme, Button } from 'antd';
 const { useToken } = theme;
-import { EnvironmentOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, CompassOutlined, GlobalOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Place, TravelSegment, TravelMode, ValidationResult } from '../types';
@@ -9,6 +9,7 @@ import { Grid } from 'antd';
 const { useBreakpoint } = Grid;
 import SmartCard from './SmartCard';
 import DynamicGap from './DynamicGap';
+import { generateMyLocationUrl } from '../utils/googleMaps';
 
 const { Title, Text } = Typography;
 
@@ -49,6 +50,7 @@ export default function ZoneB_Timeline({
     const { token } = useToken();
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+    const isDarkMode = token.colorBgContainer === '#141414' || token.colorBgContainer === '#000000';
 
 
     const sensors = useSensors(
@@ -94,12 +96,43 @@ export default function ZoneB_Timeline({
                             const validation = validationResults.find(v => v.placeIndex === index);
                             const isEditing = editingPlaceId === place.tempId;
 
+                            // Google Maps URL 생성 (첫 번째 장소용)
+                            const myLocationUrl = index === 0 ? generateMyLocationUrl(place.name) : '';
+
                             return (
                                 <div
                                     key={place.tempId}
                                     data-id={place.tempId}
                                     className="smart-card-wrapper"
                                 >
+                                    {/* 첫 번째 장소 상단에 '현재 위치' 버튼 추가 */}
+                                    {index === 0 && (
+                                        <div style={{
+                                            marginBottom: '12px',
+                                            padding: '8px 16px',
+                                            background: isDarkMode ? '#1f1f1f' : '#f8fafc',
+                                            borderRadius: '12px',
+                                            border: `1px solid ${isDarkMode ? '#303030' : '#e2e8f0'}`,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <CompassOutlined style={{ color: token.colorPrimary }} />
+                                                <Text strong style={{ fontSize: '12px' }}>현지 도착 시 길찾기</Text>
+                                            </div>
+                                            <Button
+                                                size="small"
+                                                icon={<GlobalOutlined />}
+                                                type="primary"
+                                                style={{ backgroundColor: '#1a73e8', borderColor: '#1a73e8', fontSize: '11px', borderRadius: '6px' }}
+                                                onClick={() => window.open(myLocationUrl, '_blank')}
+                                            >
+                                                현재 위치에서 {place.name} 경로
+                                            </Button>
+                                        </div>
+                                    )}
+
                                     {/* Smart Card */}
                                     <SmartCard
                                         place={place}

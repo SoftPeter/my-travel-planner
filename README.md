@@ -36,13 +36,18 @@
 - **Click-to-Map**: 카드 번호(①, ②) 클릭 시 지도가 즉시 해당 위치로 이동하여 스크롤 피로도를 줄입니다.
 - **Magic Formatting**: 시간 입력 시 숫자만 쳐도(`1400` → `14:00`) 자동 변환되는 편의 기능을 제공합니다.
 
+### 4. 🧭 구글 맵 경로 최적화 (Advanced Routing)
+- **듀얼 경로 옵션**: 각 장소마다 '계획된 동선(이전 장소 출발)'과 '실제 현재 위치(GPS)' 기반의 구글 맵 경로 버튼을 제공합니다.
+- **인덱스 기반 로직**: 복잡한 설정 없이 타임라인 순서에 따라 자동으로 출발지를 매칭합니다.
+- **첫 일정 자동 감지**: 첫 번째 일정에서는 '현재 위치' 버튼만 노출하여 UX 정합성을 유지합니다.
+
 ---
 
 ## 🛠️ Tech Stack
 
 | Category | Technology |
 | :--- | :--- |
-| **Framework** | ![Next.js](https://img.shields.io/badge/Next.js_16-balck?logo=next.js) **App Router** 기반 |
+| **Framework** | ![Next.js](https://img.shields.io/badge/Next.js_15-black?logo=next.js) **App Router** 기반 |
 | **Database** | ![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-orange?logo=firebase) **실시간 동기화 노드** |
 | **Auth** | **Firebase Anonymous Authentication** (익명 인증) |
 | **Language** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) |
