@@ -26,6 +26,13 @@ const { useBreakpoint } = Grid;
 const { TextArea } = Input;
 const { Text } = Typography;
 
+// 상태별 아이콘 설정
+const STATUS_ICONS = [
+    { id: '1', key: 'booking', icon: <span style={{ fontSize: '13px' }}>📅</span>, label: '예약 완료', color: '#1890ff' },
+    { id: '2', key: 'ticket', icon: <span style={{ fontSize: '13px' }}>🎫</span>, label: '티켓 구매', color: '#722ed1' },
+    { id: '3', key: 'visit', icon: <span style={{ fontSize: '13px' }}>✅</span>, label: '방문 완료', color: '#52c41a' },
+];
+
 interface SmartCardProps {
     place: Place;
     index: number;
@@ -67,7 +74,7 @@ export default function SmartCard({
     };
 
     const handleChecklistToggle = (itemId: string) => {
-        const updatedChecklist = place.checklist.map(item =>
+        const updatedChecklist = place.checklist.map((item: any) =>
             item.id === itemId ? { ...item, checked: !item.checked } : item
         );
         onUpdate(place.tempId, { checklist: updatedChecklist });
@@ -83,6 +90,11 @@ export default function SmartCard({
     const borderColor = (isEditing || (isMobile && isFocused)) ? token.colorPrimary : token.colorBorderSecondary;
     const cardBgColor = isEditing ? token.colorFillAlter : token.colorBgContainer;
     const titleColor = isAccommodation ? "#7c3aed" : (isEditing ? token.colorPrimary : token.colorText);
+
+    // 활성화된 상태 아이콘 추출
+    const activeStatusIcons = STATUS_ICONS.filter(status =>
+        place.checklist.find((item: any) => item.id === status.id && item.checked)
+    );
 
     // 모바일 전용 편집 모달 핸들러
     const handleMobileEditClose = () => {
@@ -196,7 +208,33 @@ export default function SmartCard({
                                         <EnvironmentOutlined style={{ color: token.colorPrimary, fontSize: isMobile ? '15px' : '13px' }} />
                                     )}
                                     {place.name}
-                                    {place.memo && <span style={{ marginLeft: '4px', fontSize: '14px' }} title="메모 있음">📝</span>}
+
+                                    {/* 상태 아이콘 배지 (애니메이션 적용) */}
+                                    {activeStatusIcons.length > 0 && (
+                                        <div style={{ display: 'inline-flex', gap: '4px', marginLeft: '2px' }}>
+                                            {activeStatusIcons.map(status => (
+                                                <Tooltip key={status.id} title={status.label}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        animation: 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                                        fontSize: isMobile ? '14px' : '12px',
+                                                        transformOrigin: 'center'
+                                                    }}>
+                                                        {status.icon}
+                                                    </div>
+                                                </Tooltip>
+                                            ))}
+                                            <style>{`
+                                                @keyframes scaleIn {
+                                                    from { transform: scale(0); opacity: 0; }
+                                                    to { transform: scale(1); opacity: 1; }
+                                                }
+                                            `}</style>
+                                        </div>
+                                    )}
+
+                                    {place.memo && <span style={{ marginLeft: '2px', fontSize: isMobile ? '14px' : '12px' }} title="메모 있음">📝</span>}
                                     {isAccommodation && <Badge status="processing" color="purple" text="숙소" style={{ marginLeft: '4px' }} />}
 
                                     {!isMobile && place.placeDetails?.rating && (
@@ -275,14 +313,26 @@ export default function SmartCard({
                                             label: <Text type="secondary" style={{ fontSize: '11px' }}>상세 정보 & 메모</Text>,
                                             children: (
                                                 <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                                                    {/* 체크리스트 */}
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                        {place.checklist.map(item => (
+                                                    {/* 주요 상태 토글 (예약/티켓/방문) */}
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        flexWrap: 'wrap',
+                                                        gap: '12px',
+                                                        padding: '8px',
+                                                        background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                                        borderRadius: '8px',
+                                                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+                                                    }}>
+                                                        {place.checklist.map((item: any) => (
                                                             <Checkbox
                                                                 key={item.id}
                                                                 checked={item.checked}
                                                                 onChange={() => handleChecklistToggle(item.id)}
-                                                                style={{ fontSize: '11px' }}
+                                                                style={{
+                                                                    fontSize: '11px',
+                                                                    fontWeight: item.checked ? 600 : 400,
+                                                                    color: item.checked ? token.colorPrimary : token.colorTextDescription
+                                                                }}
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 {item.label}
@@ -397,22 +447,34 @@ export default function SmartCard({
                                 </div>
 
                                 <div>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>✅ 체크리스트</Text>
-                                    <Space orientation="vertical" style={{ width: '100%' }}>
-                                        {place.checklist.map(item => (
-                                            <div key={item.id} style={{
-                                                padding: '12px',
-                                                background: isDarkMode ? '#1f1f1f' : '#f9f9f9',
-                                                borderRadius: '8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px'
-                                            }} onClick={() => handleChecklistToggle(item.id)}>
-                                                <Checkbox checked={item.checked} />
-                                                <Text>{item.label}</Text>
-                                            </div>
-                                        ))}
-                                    </Space>
+                                    <Text strong style={{ display: 'block', marginBottom: '12px' }}>✅ 진행 상태 처리</Text>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                                        {place.checklist.map((item: any) => {
+                                            const statusInfo = STATUS_ICONS.find(s => s.id === item.id);
+                                            return (
+                                                <div key={item.id} style={{
+                                                    padding: '14px 16px',
+                                                    background: item.checked
+                                                        ? (isDarkMode ? 'rgba(24,144,255,0.15)' : 'rgba(24,144,255,0.05)')
+                                                        : (isDarkMode ? '#1f1f1f' : '#f9f9f9'),
+                                                    border: `1px solid ${item.checked ? token.colorPrimary : (isDarkMode ? '#303030' : '#f0f0f0')}`,
+                                                    borderRadius: '12px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                    transition: 'all 0.2s ease'
+                                                }} onClick={() => handleChecklistToggle(item.id)}>
+                                                    <Checkbox checked={item.checked} />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                                        <span style={{ fontSize: '18px' }}>{statusInfo?.icon}</span>
+                                                        <Text strong={item.checked} style={{ color: item.checked ? token.colorPrimary : 'inherit' }}>
+                                                            {item.label}
+                                                        </Text>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
                                 <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
