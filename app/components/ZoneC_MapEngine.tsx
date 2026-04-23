@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Map, Marker, useMap, useApiIsLoaded } from '@vis.gl/react-google-maps';
+import { Map, Marker, useMap, useApiIsLoaded, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { Place, TravelSegment } from '../types';
 import { MAP_CONFIG } from '../utils/constants';
 import PlaceSearcher from './PlaceSearcher';
@@ -111,11 +111,12 @@ export default function ZoneC_MapEngine({
  */
 function RoutePolylines({ places, segments }: { places: Place[], segments: TravelSegment[] }) {
     const map = useMap();
+    const geometryLibrary = useMapsLibrary('geometry');
     const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
     const [middleMarkers, setMiddleMarkers] = useState<google.maps.Marker[]>([]);
 
     useEffect(() => {
-        if (!map) return;
+        if (!map || !geometryLibrary) return;
 
         // 기존 요소 제거
         polylines.forEach(p => p.setMap(null));
@@ -129,16 +130,18 @@ function RoutePolylines({ places, segments }: { places: Place[], segments: Trave
             const to = places[i + 1];
             const segment = segments[i];
 
-            // 경로 좌표
-            const path = [from.position, to.position];
-
-            // 1. Polyline 실선 스타일로 통일 (기획안: 직선 연결)
+            // 경로 좌표 (인코딩된 폴리라인이 있으면 디코딩하여 사용, 없으면 직선)
+            const path = segment?.polylinePoints 
+                ? geometryLibrary.encoding.decodePath((segment.polylinePoints as any).points || (segment.polylinePoints as any))
+                : [from.position, to.position];
+            
+            // 1. Polyline 실선 스타일
             const polyline = new google.maps.Polyline({
                 path,
                 geodesic: true,
-                strokeColor: '#3b82f6', // 세련된 파란색
+                strokeColor: '#3b82f6',
                 strokeOpacity: 0.6,
-                strokeWeight: 3,
+                strokeWeight: 4, // 도로 경로는 조금 더 굵게 표시
                 map,
             });
             newPolylines.push(polyline);

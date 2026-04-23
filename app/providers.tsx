@@ -5,7 +5,10 @@ import { App, ConfigProvider } from 'antd';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
+        <APIProvider 
+            apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}
+            libraries={['geometry']}
+        >
             <ConfigProvider theme={{ token: { colorPrimary: '#1890ff' } }}>
                 <App>
                     {children}
